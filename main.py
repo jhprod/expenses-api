@@ -28,8 +28,8 @@ def query_oracle(sql_query: str):
         raise HTTPException(status_code=500, detail="Invalid response from Oracle DB")
 
 
-@app.get("/transactions")
-def get_transactions(request: Request, key: str = Query(None)):
+@app.get("/expenses")
+def get_expenses(request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
