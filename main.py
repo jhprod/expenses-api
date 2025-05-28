@@ -9,9 +9,14 @@ app = FastAPI()
 ORACLE_URL = os.environ["DB_URL"]
 USERNAME = os.environ["DB_USER"]
 PASSWORD = os.environ["DB_PASSWORD"] # You can use os.environ if storing securely
+API_KEY = os.environ["API_KEY"]
 
 @app.get("/transactions")
-def get_transactions():
+def get_transactions(request: Request):
+     client_key = request.headers.get("X-API-Key")
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+        
     sql_query = "SELECT * FROM credit_expenses"
     headers = {
         "Content-Type": "application/sql",
