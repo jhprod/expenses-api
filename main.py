@@ -16,8 +16,8 @@ def get_transactions(request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
-
-    sql_query = "SELECT * FROM credit_expenses"
+    
+    sql_query = os.environ["transactions_query"]
     headers = {
         "Content-Type": "application/sql",
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
