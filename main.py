@@ -1,17 +1,19 @@
-from fastapi import FastAPI
 import oracledb
 import os
+from fastapi import FastAPI
 
 app = FastAPI()
 
-# Read connection info from environment variables
 DB_USER = os.environ["DB_USER"]
 DB_PASSWORD = os.environ["DB_PASSWORD"]
-DB_DSN = os.environ["DB_DSN"]  # Should be like "yourdb_high.adb.oraclecloud.com"
+DB_HOST = os.environ["DB_HOST"]
+DB_PORT = os.environ["DB_PORT"]
+DB_SERVICE_NAME = os.environ["DB_SERVICE_NAME"]
 
 @app.get("/transactions")
 def get_transactions():
-    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=DB_DSN) as conn:
+    dsn = f"{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}"
+    with oracledb.connect(user=DB_USER, password=DB_PASSWORD, dsn=dsn) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM credit_expenses")
         columns = [col[0] for col in cursor.description]
