@@ -13,7 +13,7 @@ API_KEY = os.environ["API_KEY"]
 
 @app.get("/transactions")
 def get_transactions(request: Request):
-     client_key = request.headers.get("X-API-Key")
+    client_key = request.headers.get("X-API-Key")
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
         
