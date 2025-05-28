@@ -31,3 +31,12 @@ def get_transactions(request: Request, key: str = Query(None)):
     data = response.json()
     rows = data["items"][0]["resultSet"]["items"]
     return rows
+
+@app.get("/ping")
+def ping(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    return {"message": "ping success"}
+
