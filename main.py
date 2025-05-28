@@ -10,14 +10,7 @@ ORACLE_URL = os.environ["DB_URL"]
 USERNAME = os.environ["DB_USER"]
 PASSWORD = os.environ["DB_PASSWORD"]
 
-@app.get("/transactions")
-def get_transactions(request: Request, key: str = Query(None)):
-    # Accept API key via header or ?key=... query param
-    client_key = request.headers.get("X-API-Key") or key
-    if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    
-    sql_query = os.environ["transactions_query"]
+def query_oracle(sql_query: str):
     headers = {
         "Content-Type": "application/sql",
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
@@ -26,13 +19,24 @@ def get_transactions(request: Request, key: str = Query(None)):
     response = requests.post(ORACLE_URL, headers=headers, data=sql_query)
 
     if not response.ok:
-        return {"error": response.status_code, "message": response.text}
+        raise HTTPException(status_code=response.status_code, detail=response.text)
 
-    data = response.json()
-    rows = data["items"][0]["resultSet"]["items"]
-    return rows
+    try:
+        data = response.json()
+        return data["items"][0]["resultSet"]["items"]
+    except (KeyError, IndexError, TypeError):
+        raise HTTPException(status_code=500, detail="Invalid response from Oracle DB")
+
+
+@app.get("/transactions")
+def get_transactions(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["transactions_query"]
+    return query_oracle(SQL_QUERY)
+
 
 @app.get("/ping")
 def ping():
     return {"message": "ping success"}
-
