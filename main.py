@@ -38,7 +38,7 @@ def get_expenses(request: Request, key: str = Query(None)):
 
 
 @app.get("/getExpenseID")
-def get_expenses(request: Request, key: str = Query(None)):
+def get_expensesId(request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
