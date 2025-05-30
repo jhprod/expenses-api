@@ -1,6 +1,7 @@
 import os
 import base64
 import requests
+import oracledb
 from fastapi import FastAPI, Request, HTTPException, Query
 
 app = FastAPI()
