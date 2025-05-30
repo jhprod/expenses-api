@@ -53,10 +53,9 @@ def get_expense_id():
     }
 
     payload = {
-        "statementText": "BEGIN SELECT MY_EXPENSE_SEQ.NEXTVAL INTO :new_id FROM dual; END;",
-        "binds": {
-            "new_id": None
-        }
+      {
+          "statementText": "SELECT MY_EXPENSE_SEQ.NEXTVAL AS ID FROM DUAL"
+      }
     }
 
     response = requests.post(ORACLE_URL, headers=headers, json=payload)
