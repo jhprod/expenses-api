@@ -25,7 +25,7 @@ def query_oracle(sql_query: str):
         data = response.json()
         return data["items"][0]["resultSet"]["items"]
     except (KeyError, IndexError, TypeError):
-        raise HTTPException(status_code=500, detail="Invalid response from Oracle DB")
+        raise HTTPException(status_code=500, detail=data)
 
 
 @app.get("/expenses")
