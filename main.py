@@ -37,7 +37,10 @@ def get_expenses(request: Request, key: str = Query(None)):
     return query_oracle(SQL_QUERY)
 
 @app.get("/get-expense-id")
-def get_expense_id():
+def get_expense_id(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
     ORDS_NEXT_ID_URL = os.environ["get_expense_url"]
     try:
         response = requests.get(ORDS_NEXT_ID_URL)
