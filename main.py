@@ -36,40 +36,22 @@ def get_expenses(request: Request, key: str = Query(None)):
     SQL_QUERY = os.environ["transactions_query"]
     return query_oracle(SQL_QUERY)
 
-
-# @app.get("/getExpenseID")
-# def get_expensesId(request: Request, key: str = Query(None)):
-#     client_key = request.headers.get("X-API-Key") or key
-#     if client_key != API_KEY:
-#         raise HTTPException(status_code=403, detail="Forbidden")
-#     SQL_QUERY = os.environ["expenseid_query"]
-#     return query_oracle(SQL_QUERY)
-
-@app.get("/getExpenseID")
-def get_expense_id():
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
-    }
-
-    payload = {
-      {
-          "statementText": "SELECT MY_EXPENSE_SEQ.NEXTVAL AS ID FROM DUAL"
-      }
-    }
-
-    response = requests.post(ORACLE_URL, headers=headers, json=payload)
-
-    if not response.ok:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
-
+@app.get("/next-expense-id")
+def get_next_expense_id(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    ORACLE_DSN = os.environ["DB_DSN"]
     try:
-        result = response.json()
-        return {
-            "expense_id": result["items"][0]["binds"]["new_id"]
-        }
+        with oracledb.connect(user=USERNAME, password=PASSWORD, dsn=ORACLE_DSN) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT EXPENSE_SEQ.NEXTVAL FROM dual")
+                result = cursor.fetchone()
+                return {"next_id": result[0]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Could not parse Oracle response")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/ping")
 def ping():
     return {"message": "ping success"}
