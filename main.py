@@ -1,7 +1,6 @@
 import os
 import base64
 import requests
-import oracledb
 from fastapi import FastAPI, Request, HTTPException, Query
 
 app = FastAPI()
@@ -37,18 +36,20 @@ def get_expenses(request: Request, key: str = Query(None)):
     SQL_QUERY = os.environ["transactions_query"]
     return query_oracle(SQL_QUERY)
 
-@app.get("/next-expense-id")
-def get_next_expense_id(request: Request, key: str = Query(None)):
-    client_key = request.headers.get("X-API-Key") or key
-    if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    ORACLE_DSN = os.environ["DB_DSN"]
+@app.get("/get-expense-id")
+def get_expense_id():
+    ORDS_NEXT_ID_URL = os.environ["get_expense_url"]
     try:
-        with oracledb.connect(user=USERNAME, password=PASSWORD, dsn=ORACLE_DSN) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT EXPENSE_SEQ.NEXTVAL FROM dual")
-                result = cursor.fetchone()
-                return {"next_id": result[0]}
+        response = requests.get(ORDS_NEXT_ID_URL)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        data = response.json()
+
+        # return just the ID field
+        return {"expense_id": data.get("id")}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
