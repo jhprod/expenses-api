@@ -64,6 +64,14 @@ def get_expenses(request: Request, key: str = Query(None)):
     SQL_QUERY = os.environ["cards_query"]
     return query_oracle(SQL_QUERY)
 
+@app.get("/categories")
+def get_expenses(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["category_query"]
+    return query_oracle(SQL_QUERY)
+
 @app.get("/ping")
 def ping():
     return {"message": "ping success"}
