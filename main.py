@@ -100,6 +100,74 @@ def get_cardcategories(request: Request, key: str = Query(None)):
     SQL_QUERY = os.environ["card_category_query"]
     return query_oracle(SQL_QUERY)
 
+# @app.post("/updateExpense")
+# def update_expense(
+#     request: Request,
+#     expense: Expense,
+#     key: str = Query(None)
+# ):
+#     client_key = request.headers.get("X-API-Key") or key
+
+
+#     if client_key != API_KEY:
+#         raise HTTPException(status_code=403, detail="Forbidden")
+
+#     sql_query = f"""
+#     DECLARE
+#         v_count NUMBER;
+#     BEGIN
+#         SELECT COUNT(*) INTO v_count FROM credit_expenses WHERE ID = {expense.ID};
+
+#         IF v_count = 0 THEN
+#             INSERT INTO credit_expenses (
+#                 ID, CARDID, TRANSACTIONDATE, DESCRIPTION, AMOUNT,
+#                 POSTSTATUS, REWARDSVALUE, VENUEFOUND,
+#                 BUDGETLABEL, CARDCATEGORY, TOSYNC, UPDATEDDT
+#             ) VALUES (
+#                 {expense.ID}, {expense.CARDID}, TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+#                 '{expense.DESCRIPTION.replace("'", "''")}', {expense.AMOUNT}, '{expense.POSTSTATUS}',
+#                 {expense.REWARDSVALUE}, '{expense.VENUEFOUND}',
+#                 {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
+#                 {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
+#                 '{expense.TOSYNC}', TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+#             );
+#         ELSE
+#             UPDATE credit_expenses SET
+#                 CARDID = {expense.CARDID},
+#                 TRANSACTIONDATE = TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+#                 DESCRIPTION = '{expense.DESCRIPTION.replace("'", "''")}',
+#                 AMOUNT = {expense.AMOUNT},
+#                 POSTSTATUS = '{expense.POSTSTATUS}',
+#                 REWARDSVALUE = {expense.REWARDSVALUE},
+#                 VENUEFOUND = '{expense.VENUEFOUND}',
+#                 BUDGETLABEL = {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
+#                 CARDCATEGORY = {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
+#                 TOSYNC = '{expense.TOSYNC}',
+#                 UPDATEDDT = TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+#             WHERE ID = {expense.ID};
+#         END IF;
+#     END;
+#     """
+
+
+#     headers = {
+#         "Content-Type": "application/sql",
+#         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+#     }
+
+#     try:
+#         response = requests.post(ORACLE_URL, headers=headers, data=sql_query, timeout=10)
+#         logger.info(f"ORDS response status: {response.status_code}")
+
+#         if response.status_code == 200:
+#             return {"status": "success"}
+#         else:
+#             raise HTTPException(status_code=500, detail=response.text)
+
+#     except requests.exceptions.RequestException as e:
+#         logger.error(f"Request to ORDS failed: {e}")
+#         raise HTTPException(status_code=500, detail="Error communicating with Oracle ORDS")
+
 @app.post("/updateExpense")
 def update_expense(
     request: Request,
@@ -107,69 +175,37 @@ def update_expense(
     key: str = Query(None)
 ):
     client_key = request.headers.get("X-API-Key") or key
-    logger.info(f"Received API key: {client_key}")
-
     if client_key != API_KEY:
-        logger.warning("Invalid API key")
         raise HTTPException(status_code=403, detail="Forbidden")
-
-    sql_query = f"""
-    DECLARE
-        v_count NUMBER;
-    BEGIN
-        SELECT COUNT(*) INTO v_count FROM credit_expenses WHERE ID = {expense.ID};
-
-        IF v_count = 0 THEN
-            INSERT INTO credit_expenses (
-                ID, CARDID, TRANSACTIONDATE, DESCRIPTION, AMOUNT,
-                POSTSTATUS, REWARDSVALUE, VENUEFOUND,
-                BUDGETLABEL, CARDCATEGORY, TOSYNC, UPDATEDDT
-            ) VALUES (
-                {expense.ID}, {expense.CARDID}, TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-                '{expense.DESCRIPTION.replace("'", "''")}', {expense.AMOUNT}, '{expense.POSTSTATUS}',
-                {expense.REWARDSVALUE}, '{expense.VENUEFOUND}',
-                {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
-                {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
-                '{expense.TOSYNC}', TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-            );
-        ELSE
-            UPDATE credit_expenses SET
-                CARDID = {expense.CARDID},
-                TRANSACTIONDATE = TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-                DESCRIPTION = '{expense.DESCRIPTION.replace("'", "''")}',
-                AMOUNT = {expense.AMOUNT},
-                POSTSTATUS = '{expense.POSTSTATUS}',
-                REWARDSVALUE = {expense.REWARDSVALUE},
-                VENUEFOUND = '{expense.VENUEFOUND}',
-                BUDGETLABEL = {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
-                CARDCATEGORY = {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
-                TOSYNC = '{expense.TOSYNC}',
-                UPDATEDDT = TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-            WHERE ID = {expense.ID};
-        END IF;
-    END;
-    """
-
-    logger.info("SQL Query to be sent:\n" + sql_query)
+    ORACLE_INSERT_EXPENSE_URL = os.environ["ORACLE_INSERT_EXPENSE_URL"]
+    payload = {
+        "p_id": expense.ID,
+        "p_cardid": expense.CARDID,
+        "p_trxdate": expense.TRANSACTIONDATE,
+        "p_desc": expense.DESCRIPTION,
+        "p_amount": expense.AMOUNT,
+        "p_poststatus": expense.POSTSTATUS,
+        "p_rewardsvalue": expense.REWARDSVALUE,
+        "p_venuefound": expense.VENUEFOUND,
+        "p_budgetlabel": expense.BUDGETLABEL,
+        "p_cardcategory": expense.CARDCATEGORY,
+        "p_tosync": expense.TOSYNC,
+        "p_updateddt": expense.UPDATEDDT
+    }
 
     headers = {
-        "Content-Type": "application/sql",
+        "Content-Type": "application/json",
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
     }
 
     try:
-        response = requests.post(ORACLE_URL, headers=headers, data=sql_query, timeout=10)
-        logger.info(f"ORDS response status: {response.status_code}")
-        logger.info(f"ORDS response body:\n{response.text}")
-
+        response = requests.post(f"{ORACLE_INSERT_EXPENSE_URL}", headers=headers, json=payload)
         if response.status_code == 200:
             return {"status": "success"}
         else:
             raise HTTPException(status_code=500, detail=response.text)
-
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request to ORDS failed: {e}")
-        raise HTTPException(status_code=500, detail="Error communicating with Oracle ORDS")
+        raise HTTPException(status_code=500, detail="ORDS communication failed")
         
 @app.get("/ping")
 def ping():
