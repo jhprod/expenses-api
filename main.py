@@ -125,7 +125,7 @@ def update_expense(
                 POSTSTATUS, REWARDSVALUE, VENUEFOUND,
                 BUDGETLABEL, CARDCATEGORY, TOSYNC, UPDATEDDT
             ) VALUES (
-                {expense.ID}, {expense.CARDID}, TO_DATE('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD'),
+                {expense.ID}, {expense.CARDID}, TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD HH24:MI:SS'),
                 '{expense.DESCRIPTION.replace("'", "''")}', {expense.AMOUNT}, '{expense.POSTSTATUS}',
                 {expense.REWARDSVALUE}, '{expense.VENUEFOUND}',
                 {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
@@ -135,7 +135,7 @@ def update_expense(
         ELSE
             UPDATE credit_expenses SET
                 CARDID = {expense.CARDID},
-                TRANSACTIONDATE = TO_DATE('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD'),
+                TRANSACTIONDATE = TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD HH24:MI:SS'),
                 DESCRIPTION = '{expense.DESCRIPTION.replace("'", "''")}',
                 AMOUNT = {expense.AMOUNT},
                 POSTSTATUS = '{expense.POSTSTATUS}',
