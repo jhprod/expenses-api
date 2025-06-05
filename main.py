@@ -12,11 +12,10 @@ USERNAME = os.environ["DB_USER"]
 PASSWORD = os.environ["DB_PASSWORD"]
 
 
-# Define request schema
 class Expense(BaseModel):
     ID: int
     CARDID: int
-    TRANSACTIONDATE: str  # Expecting 'YYYY-MM-DD'
+    TRANSACTIONDATE: str  # 'YYYY-MM-DD'
     DESCRIPTION: str
     AMOUNT: float
     POSTSTATUS: str
@@ -24,6 +23,8 @@ class Expense(BaseModel):
     VENUEFOUND: str
     BUDGETLABEL: int = None
     CARDCATEGORY: int = None
+    TOSYNC: str           # e.g. 'Y' or 'N'
+    UPDATEDDT: str        # 'YYYY-MM-DD HH24:MI:SS' expected
 
 def query_oracle(sql_query: str):
     headers = {
@@ -106,13 +107,15 @@ def update_expense(expense: Expense):
         IF v_count = 0 THEN
             INSERT INTO credit_expenses (
                 ID, CARDID, TRANSACTIONDATE, DESCRIPTION, AMOUNT,
-                POSTSTATUS, REWARDSVALUE, VENUEFOUND, BUDGETLABEL, CARDCATEGORY
+                POSTSTATUS, REWARDSVALUE, VENUEFOUND,
+                BUDGETLABEL, CARDCATEGORY, TOSYNC, UPDATEDDT
             ) VALUES (
                 {expense.ID}, {expense.CARDID}, TO_DATE('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD'),
                 '{expense.DESCRIPTION.replace("'", "''")}', {expense.AMOUNT}, '{expense.POSTSTATUS}',
-                {expense.REWARDSVALUE}, '{expense.VENUEFOUND}', 
+                {expense.REWARDSVALUE}, '{expense.VENUEFOUND}',
                 {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
-                {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'}
+                {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
+                '{expense.TOSYNC}', TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD HH24:MI:SS')
             );
         ELSE
             UPDATE credit_expenses SET
@@ -124,7 +127,9 @@ def update_expense(expense: Expense):
                 REWARDSVALUE = {expense.REWARDSVALUE},
                 VENUEFOUND = '{expense.VENUEFOUND}',
                 BUDGETLABEL = {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
-                CARDCATEGORY = {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'}
+                CARDCATEGORY = {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
+                TOSYNC = '{expense.TOSYNC}',
+                UPDATEDDT = TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD HH24:MI:SS')
             WHERE ID = {expense.ID};
         END IF;
     END;
