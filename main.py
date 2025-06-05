@@ -125,17 +125,17 @@ def update_expense(
                 POSTSTATUS, REWARDSVALUE, VENUEFOUND,
                 BUDGETLABEL, CARDCATEGORY, TOSYNC, UPDATEDDT
             ) VALUES (
-                {expense.ID}, {expense.CARDID}, TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD HH24:MI:SS'),
+                {expense.ID}, {expense.CARDID}, TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
                 '{expense.DESCRIPTION.replace("'", "''")}', {expense.AMOUNT}, '{expense.POSTSTATUS}',
                 {expense.REWARDSVALUE}, '{expense.VENUEFOUND}',
                 {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
                 {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
-                '{expense.TOSYNC}', TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD HH24:MI:SS')
+                '{expense.TOSYNC}', TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
             );
         ELSE
             UPDATE credit_expenses SET
                 CARDID = {expense.CARDID},
-                TRANSACTIONDATE = TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD HH24:MI:SS'),
+                TRANSACTIONDATE = TO_TIMESTAMP('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
                 DESCRIPTION = '{expense.DESCRIPTION.replace("'", "''")}',
                 AMOUNT = {expense.AMOUNT},
                 POSTSTATUS = '{expense.POSTSTATUS}',
@@ -144,7 +144,7 @@ def update_expense(
                 BUDGETLABEL = {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
                 CARDCATEGORY = {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'},
                 TOSYNC = '{expense.TOSYNC}',
-                UPDATEDDT = TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD HH24:MI:SS')
+                UPDATEDDT = TO_TIMESTAMP('{expense.UPDATEDDT}', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
             WHERE ID = {expense.ID};
         END IF;
     END;
