@@ -3,6 +3,10 @@ import base64
 import requests
 from fastapi import FastAPI, Request, HTTPException, Query
 from pydantic import BaseModel
+import logging
+
+# Add this line to define the logger
+logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI()
 
