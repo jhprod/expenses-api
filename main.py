@@ -2,6 +2,7 @@ import os
 import base64
 import requests
 from fastapi import FastAPI, Request, HTTPException, Query
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -9,6 +10,20 @@ API_KEY = os.environ["API_KEY"]
 ORACLE_URL = os.environ["DB_URL"]
 USERNAME = os.environ["DB_USER"]
 PASSWORD = os.environ["DB_PASSWORD"]
+
+
+# Define request schema
+class Expense(BaseModel):
+    ID: int
+    CARDID: int
+    TRANSACTIONDATE: str  # Expecting 'YYYY-MM-DD'
+    DESCRIPTION: str
+    AMOUNT: float
+    POSTSTATUS: str
+    REWARDSVALUE: float
+    VENUEFOUND: str
+    BUDGETLABEL: int = None
+    CARDCATEGORY: int = None
 
 def query_oracle(sql_query: str):
     headers = {
@@ -79,6 +94,53 @@ def get_cardcategories(request: Request, key: str = Query(None)):
         raise HTTPException(status_code=403, detail="Forbidden")
     SQL_QUERY = os.environ["card_category_query"]
     return query_oracle(SQL_QUERY)
+
+@app.post("/updateExpense")
+def update_expense(expense: Expense):
+    sql_query = f"""
+    DECLARE
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM credit_expenses WHERE ID = {expense.ID};
+        
+        IF v_count = 0 THEN
+            INSERT INTO credit_expenses (
+                ID, CARDID, TRANSACTIONDATE, DESCRIPTION, AMOUNT,
+                POSTSTATUS, REWARDSVALUE, VENUEFOUND, BUDGETLABEL, CARDCATEGORY
+            ) VALUES (
+                {expense.ID}, {expense.CARDID}, TO_DATE('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD'),
+                '{expense.DESCRIPTION.replace("'", "''")}', {expense.AMOUNT}, '{expense.POSTSTATUS}',
+                {expense.REWARDSVALUE}, '{expense.VENUEFOUND}', 
+                {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
+                {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'}
+            );
+        ELSE
+            UPDATE credit_expenses SET
+                CARDID = {expense.CARDID},
+                TRANSACTIONDATE = TO_DATE('{expense.TRANSACTIONDATE}', 'YYYY-MM-DD'),
+                DESCRIPTION = '{expense.DESCRIPTION.replace("'", "''")}',
+                AMOUNT = {expense.AMOUNT},
+                POSTSTATUS = '{expense.POSTSTATUS}',
+                REWARDSVALUE = {expense.REWARDSVALUE},
+                VENUEFOUND = '{expense.VENUEFOUND}',
+                BUDGETLABEL = {expense.BUDGETLABEL if expense.BUDGETLABEL is not None else 'NULL'},
+                CARDCATEGORY = {expense.CARDCATEGORY if expense.CARDCATEGORY is not None else 'NULL'}
+            WHERE ID = {expense.ID};
+        END IF;
+    END;
+    """
+
+    headers = {
+        "Content-Type": "application/sql",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    response = requests.post(ORACLE_URL, headers=headers, data=sql_query)
+
+    if response.status_code == 200:
+        return {"status": "success"}
+    else:
+        raise HTTPException(status_code=500, detail=response.text)
 
 @app.get("/ping")
 def ping():
