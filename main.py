@@ -97,13 +97,23 @@ def get_cardcategories(request: Request, key: str = Query(None)):
     return query_oracle(SQL_QUERY)
 
 @app.post("/updateExpense")
-def update_expense(expense: Expense):
+def update_expense(
+    request: Request,
+    expense: Expense,
+    key: str = Query(None)
+):
+    # --- API Key check ---
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # --- Construct SQL ---
     sql_query = f"""
     DECLARE
         v_count NUMBER;
     BEGIN
         SELECT COUNT(*) INTO v_count FROM credit_expenses WHERE ID = {expense.ID};
-        
+
         IF v_count = 0 THEN
             INSERT INTO credit_expenses (
                 ID, CARDID, TRANSACTIONDATE, DESCRIPTION, AMOUNT,
@@ -135,6 +145,7 @@ def update_expense(expense: Expense):
     END;
     """
 
+    # --- Send SQL to ORDS ---
     headers = {
         "Content-Type": "application/sql",
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
