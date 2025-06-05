@@ -102,12 +102,13 @@ def update_expense(
     expense: Expense,
     key: str = Query(None)
 ):
-    # --- API Key check ---
     client_key = request.headers.get("X-API-Key") or key
+    logger.info(f"Received API key: {client_key}")
+
     if client_key != API_KEY:
+        logger.warning("Invalid API key")
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # --- Construct SQL ---
     sql_query = f"""
     DECLARE
         v_count NUMBER;
@@ -145,19 +146,27 @@ def update_expense(
     END;
     """
 
-    # --- Send SQL to ORDS ---
+    logger.info("SQL Query to be sent:\n" + sql_query)
+
     headers = {
         "Content-Type": "application/sql",
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
     }
 
-    response = requests.post(ORACLE_URL, headers=headers, data=sql_query)
+    try:
+        response = requests.post(ORACLE_URL, headers=headers, data=sql_query, timeout=10)
+        logger.info(f"ORDS response status: {response.status_code}")
+        logger.info(f"ORDS response body:\n{response.text}")
 
-    if response.status_code == 200:
-        return {"status": "success"}
-    else:
-        raise HTTPException(status_code=500, detail=response.text)
+        if response.status_code == 200:
+            return {"status": "success"}
+        else:
+            raise HTTPException(status_code=500, detail=response.text)
 
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request to ORDS failed: {e}")
+        raise HTTPException(status_code=500, detail="Error communicating with Oracle ORDS")
+        
 @app.get("/ping")
 def ping():
     return {"message": "ping success"}
