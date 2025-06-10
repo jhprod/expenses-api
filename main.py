@@ -138,9 +138,11 @@ def update_expense(
         if response.status_code == 200:
             return {"status": "success"}
         else:
+            print(f"ORDS response error: {response.status_code} - {response.text}")
             raise HTTPException(status_code=500, detail=response.text)
     except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail="ORDS communication failed")
+        print(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
         
 @app.get("/ping")
 def ping():
