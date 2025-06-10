@@ -27,8 +27,9 @@ class Expense(BaseModel):
     VENUEFOUND: str
     BUDGETLABEL: int = None
     CARDCATEGORY: int = None
-    TOSYNC: str           # e.g. 'Y' or 'N'
-    UPDATEDDT: str        # 'YYYY-MM-DD HH24:MI:SS' expected
+    TOSYNC: str    
+    DELETEYN: str
+    UPDATEDDT: str       
 
 def query_oracle(sql_query: str):
     headers = {
@@ -123,7 +124,8 @@ def update_expense(
         "p_budgetlabel": expense.BUDGETLABEL,
         "p_cardcategory": expense.CARDCATEGORY,
         "p_tosync": expense.TOSYNC,
-        "p_updateddt": expense.UPDATEDDT
+        "p_updateddt": expense.UPDATEDDT,
+        "p_deleteyn": expense.DELETEYN
     }
 
     headers = {
