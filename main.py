@@ -77,6 +77,26 @@ def get_expense_id(request: Request, key: str = Query(None)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/get-budget-id")
+def get_budget_id(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    ORDS_NEXT_ID_URL = os.environ["get_budget_id_url"]
+    try:
+        response = requests.get(ORDS_NEXT_ID_URL)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        data = response.json()
+
+        # return just the ID field
+        return {"budget_id": data.get("id")}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/cards")
 def get_cards(request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
