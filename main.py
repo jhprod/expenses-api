@@ -29,6 +29,13 @@ class Expense(BaseModel):
     CARDCATEGORY: int = None
     TOSYNC: str    
     DELETEYN: str
+    UPDATEDDT: str     
+
+class BudgetCategory(BaseModel):
+    ID: int
+    EXPENSECATEGORY: str
+    TOSYNC: str    
+    DELETEYN: str
     UPDATEDDT: str       
 
 def query_oracle(sql_query: str):
@@ -163,6 +170,43 @@ def update_expense(
     except requests.exceptions.RequestException as e:
         print(f"ORDS request failed: {e}")
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
+@app.post("/updateBudgetCategory")
+def update_budget_category(
+    request: Request,
+    category: BudgetCategory,
+    key: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    ORACLE_INSERT_BUDGET_URL = os.environ["ORACLE_INSERT_BUDGET_URL"]
+
+    payload = {
+        "p_id": category.ID,
+        "p_expensecategory": category.EXPENSECATEGORY,
+        "p_tosync": category.TOSYNC,
+        "p_deleteyn": category.DELETEYN,
+        "p_updateddt": category.UPDATEDDT
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    try:
+        response = requests.post(ORACLE_INSERT_BUDGET_URL, headers=headers, json=payload)
+        if response.status_code == 200:
+            return {"status": "success"}
+        else:
+            logger.error(f"ORDS error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=response.text)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
         
 @app.get("/ping")
 def ping():
