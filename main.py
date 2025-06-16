@@ -31,6 +31,20 @@ class Expense(BaseModel):
     DELETEYN: str
     UPDATEDDT: str     
 
+class RecurExpense(BaseModel):
+    ID: int
+    DESCRIPTION: str
+    AMOUNT: float
+    START_DATE: str  # 'YYYY-MM-DD'
+    RECUR_DAY: int
+    FREQUENCY: str
+    LAST_GEN_DT: str # 'YYYY-MM-DD'
+    CARD_ID: int = None
+    CARD_CATEGORY_ID: int = None
+    BUDGET_CATEGORY_ID: int = None
+    TOSYNC: str    
+    DELETEYN: str    
+
 class BudgetCategory(BaseModel):
     ID: int
     EXPENSECATEGORY: str
@@ -218,6 +232,49 @@ def update_budget_category(
 
     try:
         response = requests.post(ORACLE_INSERT_BUDGET_URL, headers=headers, json=payload)
+        if response.status_code == 200:
+            return {"status": "success"}
+        else:
+            logger.error(f"ORDS error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=response.text)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
+@app.post("/updateRecurExpenses")
+def update_recur_expense(
+    request: Request,
+    recurExpenses: RecurExpense,
+    key: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    ORACLE_INSERT_RECUR_EXPENSE_URL = os.environ["ORACLE_INSERT_RECUR_EXPENSE_URL"]
+
+    payload = {
+        "p_id": recurExpenses.ID,
+        "p_title": recurExpenses.DESCRIPTION,
+        "p_amount": recurExpenses.AMOUNT,
+        "p_startdate": recurExpenses.START_DATE,
+        "p_recursonday": recurExpenses.RECUR_DAY
+        "p_frequency": recurExpenses.FREQUENCY,
+        "p_lastgen": recurExpenses.LAST_GEN_DT,
+        "p_deleteyn": recurExpenses.DELETEYN,
+        "p_category": recurExpenses.BUDGET_CATEGORY_ID,
+        "p_card": recurExpenses.CARD_ID
+        "p_cardcategory": recurExpenses.CARD_CATEGORY_ID,
+        "p_tosync": recurExpenses.TOSYNC,
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    try:
+        response = requests.post(ORACLE_INSERT_RECUR_EXPENSE_URL, headers=headers, json=payload)
         if response.status_code == 200:
             return {"status": "success"}
         else:
