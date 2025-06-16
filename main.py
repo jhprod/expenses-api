@@ -29,7 +29,8 @@ class Expense(BaseModel):
     CARDCATEGORY: int = None
     TOSYNC: str    
     DELETEYN: str
-    UPDATEDDT: str     
+    UPDATEDDT: str    
+    RECURYN: str
 
 class RecurExpense(BaseModel):
     ID: int
@@ -198,7 +199,8 @@ def update_expense(
         "p_cardcategory": expense.CARDCATEGORY,
         "p_tosync": expense.TOSYNC,
         "p_updateddt": expense.UPDATEDDT,
-        "p_deleteyn": expense.DELETEYN
+        "p_deleteyn": expense.DELETEYN,
+        "p_recuryn": expense.RECURYN
     }
 
     headers = {
