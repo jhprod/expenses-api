@@ -44,7 +44,8 @@ class RecurExpense(BaseModel):
     CARD_CATEGORY_ID: int = None
     BUDGET_CATEGORY_ID: int = None
     TOSYNC: str    
-    DELETEYN: str    
+    DELETEYN: str   
+    EXPENSE_ID: int
 
 class BudgetCategory(BaseModel):
     ID: int
@@ -278,7 +279,8 @@ def update_recur_expense(
         "p_category": recurExpenses.BUDGET_CATEGORY_ID,
         "p_card": recurExpenses.CARD_ID,
         "p_cardcategory": recurExpenses.CARD_CATEGORY_ID,
-        "p_tosync": recurExpenses.TOSYNC
+        "p_tosync": recurExpenses.TOSYNC,
+        "p_expenseid": recurExpenses.EXPENSE_ID
     }
 
     headers = {
