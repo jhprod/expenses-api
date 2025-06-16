@@ -69,7 +69,7 @@ def query_oracle(sql_query: str):
     except (KeyError, IndexError, TypeError):
         raise HTTPException(status_code=500, detail=data)
 
-
+################# Get rows ##############################
 @app.get("/expenses")
 def get_expenses(request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
@@ -77,6 +77,40 @@ def get_expenses(request: Request, key: str = Query(None)):
         raise HTTPException(status_code=403, detail="Forbidden")
     SQL_QUERY = os.environ["transactions_query"]
     return query_oracle(SQL_QUERY)
+
+@app.get("/cards")
+def get_cards(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["cards_query"]
+    return query_oracle(SQL_QUERY)
+
+@app.get("/categories")
+def get_categories(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["category_query"]
+    return query_oracle(SQL_QUERY)
+
+@app.get("/cardcategories")
+def get_cardcategories(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["card_category_query"]
+    return query_oracle(SQL_QUERY)
+
+@app.get("/recurExpenses")
+def get_recurExpenses(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["recur_expense_query"]
+    return query_oracle(SQL_QUERY)
+
+################# Get IDs ##############################
 
 @app.get("/get-expense-id")
 def get_expense_id(request: Request, key: str = Query(None)):
@@ -138,30 +172,8 @@ def get_recur_expense_id(request: Request, key: str = Query(None)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/cards")
-def get_cards(request: Request, key: str = Query(None)):
-    client_key = request.headers.get("X-API-Key") or key
-    if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    SQL_QUERY = os.environ["cards_query"]
-    return query_oracle(SQL_QUERY)
 
-@app.get("/categories")
-def get_categories(request: Request, key: str = Query(None)):
-    client_key = request.headers.get("X-API-Key") or key
-    if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    SQL_QUERY = os.environ["category_query"]
-    return query_oracle(SQL_QUERY)
-
-@app.get("/cardcategories")
-def get_cardcategories(request: Request, key: str = Query(None)):
-    client_key = request.headers.get("X-API-Key") or key
-    if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    SQL_QUERY = os.environ["card_category_query"]
-    return query_oracle(SQL_QUERY)
-
+################# CRUD ##############################
 
 @app.post("/updateExpense")
 def update_expense(
@@ -252,7 +264,6 @@ def update_recur_expense(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     ORACLE_INSERT_RECUR_EXPENSE_URL = os.environ["ORACLE_INSERT_RECUR_EXPENSE_URL"]
-    logger.info(f"📡 ORACLE_INSERT_RECUR_EXPENSE_URL: {ORACLE_INSERT_RECUR_EXPENSE_URL}")
     payload = {
         "p_id": recurExpenses.ID,
         "p_title": recurExpenses.DESCRIPTION,
