@@ -258,14 +258,14 @@ def update_recur_expense(
         "p_title": recurExpenses.DESCRIPTION,
         "p_amount": recurExpenses.AMOUNT,
         "p_startdate": recurExpenses.START_DATE,
-        "p_recursonday": recurExpenses.RECUR_DAY
+        "p_recursonday": recurExpenses.RECUR_DAY,
         "p_frequency": recurExpenses.FREQUENCY,
         "p_lastgen": recurExpenses.LAST_GEN_DT,
         "p_deleteyn": recurExpenses.DELETEYN,
         "p_category": recurExpenses.BUDGET_CATEGORY_ID,
-        "p_card": recurExpenses.CARD_ID
+        "p_card": recurExpenses.CARD_ID,
         "p_cardcategory": recurExpenses.CARD_CATEGORY_ID,
-        "p_tosync": recurExpenses.TOSYNC,
+        "p_tosync": recurExpenses.TOSYNC
     }
 
     headers = {
