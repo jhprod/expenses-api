@@ -208,6 +208,11 @@ def update_expense(
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
     }
 
+    # 🔍 Debug: Print payload before sending
+    print("📦 Payload being sent to ORDS:")
+    for key, value in payload.items():
+        print(f"  {key}: {value}")
+
     try:
         response = requests.post(f"{ORACLE_INSERT_EXPENSE_URL}", headers=headers, json=payload)
         if response.status_code == 200:
