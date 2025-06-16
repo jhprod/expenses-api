@@ -252,7 +252,7 @@ def update_recur_expense(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     ORACLE_INSERT_RECUR_EXPENSE_URL = os.environ["ORACLE_INSERT_RECUR_EXPENSE_URL"]
-    print(f"📡 ORACLE_INSERT_RECUR_EXPENSE_URL: {ORACLE_INSERT_RECUR_EXPENSE_URL}")
+    logger.info(f"📡 ORACLE_INSERT_RECUR_EXPENSE_URL: {ORACLE_INSERT_RECUR_EXPENSE_URL}")
     payload = {
         "p_id": recurExpenses.ID,
         "p_title": recurExpenses.DESCRIPTION,
