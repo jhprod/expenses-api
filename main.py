@@ -66,6 +66,7 @@ class CardRewardLimit(BaseModel):
 
 class QueryRewardLimit(BaseModel):
     P1_CARDID: int
+    P1_EXPENSEID: int
 
 def query_oracle(sql_query: str):
     headers = {
@@ -388,7 +389,8 @@ def queryRewardLimit(
 
     ORACLE_QUERY_REWARD_LIMIT_URL = os.environ["ORACLE_QUERY_REWARD_LIMIT_URL"]
     payload = {
-        "P1_CARDID": queryRewardLimit.P1_CARDID
+        "P1_CARDID": queryRewardLimit.P1_CARDID,
+        "P1_EXPENSEID": queryRewardLimit.P1_EXPENSEID
     }
 
     headers = {
@@ -402,10 +404,6 @@ def queryRewardLimit(
             headers=headers,
             json=payload
         )
-        print(f"🔁 Sent payload: {payload}")
-        print(f"📨 Response status: {response.status_code}")
-        print(f"📨 Response body: {response.text}")
-
         if response.status_code == 200:
             if not response.text.strip():
                 raise HTTPException(status_code=500, detail="ORDS returned 200 with empty body")
