@@ -384,9 +384,10 @@ def queryRewardLimit(
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
+
     ORACLE_QUERY_REWARD_LIMIT_URL = os.environ["ORACLE_QUERY_REWARD_LIMIT_URL"]
     payload = {
-        "P1_CARDID": queryRewardLimit.P1_CARDID       
+        "P1_CARDID": queryRewardLimit.P1_CARDID
     }
 
     headers = {
@@ -394,23 +395,28 @@ def queryRewardLimit(
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
     }
 
-   try:
-    response = requests.post(f"{ORACLE_QUERY_REWARD_LIMIT_URL}", headers=headers, json=payload)
-    print(f"🔁 Sent payload: {payload}")
-    print(f"📨 Response status: {response.status_code}")
-    print(f"📨 Response body: {response.text}")
+    try:
+        response = requests.post(f"{ORACLE_QUERY_REWARD_LIMIT_URL}", headers=headers, json=payload)
+        print(f"🔁 Sent payload: {payload}")
+        print(f"📨 Response status: {response.status_code}")
+        print(f"📨 Response body: {response.text}")
 
-    if response.status_code == 200:
-        try:
-            data = response.json()
-        except ValueError:
-            raise HTTPException(status_code=500, detail="Invalid JSON returned from ORDS")
-        return {"total_amount": data.get("total_amount")}
-    else:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
-except requests.exceptions.RequestException as e:
-    print(f"ORDS request failed: {e}")
-    raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+        if response.status_code == 200:
+            try:
+                data = response.json()
+            except ValueError:
+                raise HTTPException(status_code=500, detail="Invalid JSON returned from ORDS")
+            return {"total_amount": data.get("total_amount")}
+        else:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    except requests.exceptions.RequestException as e:
+        print(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
+
+
+  
         
 @app.get("/ping")
 def ping():
