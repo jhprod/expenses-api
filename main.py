@@ -375,6 +375,7 @@ def update_card_reward_limit(
         logger.error(f"ORDS request failed: {e}")
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
 
+
 @app.post("/queryRewardLimit")
 def queryRewardLimit(
     request: Request,
@@ -396,16 +397,23 @@ def queryRewardLimit(
     }
 
     try:
-        response = requests.post(f"{ORACLE_QUERY_REWARD_LIMIT_URL}", headers=headers, json=payload)
+        response = requests.post(
+            ORACLE_QUERY_REWARD_LIMIT_URL,
+            headers=headers,
+            json=payload
+        )
         print(f"🔁 Sent payload: {payload}")
         print(f"📨 Response status: {response.status_code}")
         print(f"📨 Response body: {response.text}")
 
         if response.status_code == 200:
+            if not response.text.strip():
+                raise HTTPException(status_code=500, detail="ORDS returned 200 with empty body")
             try:
                 data = response.json()
             except ValueError:
                 raise HTTPException(status_code=500, detail="Invalid JSON returned from ORDS")
+
             return {"total_amount": data.get("total_amount")}
         else:
             raise HTTPException(status_code=response.status_code, detail=response.text)
