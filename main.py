@@ -394,17 +394,23 @@ def queryRewardLimit(
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
     }
 
-    try:
-        response = requests.post(f"{ORACLE_QUERY_REWARD_LIMIT_URL}", headers=headers, json=payload)
-        if response.status_code == 200:
+   try:
+    response = requests.post(f"{ORACLE_QUERY_REWARD_LIMIT_URL}", headers=headers, json=payload)
+    print(f"🔁 Sent payload: {payload}")
+    print(f"📨 Response status: {response.status_code}")
+    print(f"📨 Response body: {response.text}")
+
+    if response.status_code == 200:
+        try:
             data = response.json()
-            return {"total_amount": data.get("total_amount")}
-        else:
-            print(f"ORDS response error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=response.text)
-    except requests.exceptions.RequestException as e:
-        print(f"ORDS request failed: {e}")
-        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+        except ValueError:
+            raise HTTPException(status_code=500, detail="Invalid JSON returned from ORDS")
+        return {"total_amount": data.get("total_amount")}
+    else:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+except requests.exceptions.RequestException as e:
+    print(f"ORDS request failed: {e}")
+    raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
         
 @app.get("/ping")
 def ping():
