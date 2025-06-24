@@ -376,7 +376,7 @@ def update_card_reward_limit(
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
 
 @app.post("/queryRewardLimit")
-def update_expense(
+def queryRewardLimit(
     request: Request,
     queryRewardLimit: QueryRewardLimit,
     key: str = Query(None)
