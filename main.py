@@ -56,7 +56,7 @@ class BudgetCategory(BaseModel):
 
 class CardRewardLimit(BaseModel):
     ID: int
-    CARD_ID: int
+    CARDID: int
     REWARDSLIMIT: int
     REWARDLIMITUSED: int
     BASEREWARDUNLIMITED: str
@@ -348,7 +348,7 @@ def update_card_reward_limit(
 
     payload = {
         "p_id": cardRewardLimit.ID,
-        "p_card": cardRewardLimit.CARD_ID,
+        "p_card": cardRewardLimit.CARDID,
         "p_rewardslimit": cardRewardLimit.REWARDSLIMIT,
         "p_rewardlimitused": cardRewardLimit.REWARDLIMITUSED,
         "p_baserewardunlimited": cardRewardLimit.BASEREWARDUNLIMITED,
