@@ -52,7 +52,18 @@ class BudgetCategory(BaseModel):
     EXPENSECATEGORY: str
     TOSYNC: str    
     DELETEYN: str
-    UPDATEDDT: str       
+    UPDATEDDT: str 
+
+class CardRewardLimit(BaseModel):
+    ID: int
+    CARD_ID: int
+    REWARDSLIMIT: int
+    REWARDLIMITUSED: int
+    BASEREWARDUNLIMITED: str
+    TOSYNC: str 
+    UPDATEDDT: str 
+    DELETEYN: str
+   
 
 def query_oracle(sql_query: str):
     headers = {
@@ -314,6 +325,45 @@ def update_recur_expense(
 
     try:
         response = requests.post(ORACLE_INSERT_RECUR_EXPENSE_URL, headers=headers, json=payload)
+        if response.status_code == 200:
+            return {"status": "success"}
+        else:
+            logger.error(f"ORDS error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=response.text)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
+@app.post("/updateCardRewardLimit")
+def update_card_reward_limit(
+    request: Request,
+    cardRewardLimit: CardRewardLimit,
+    key: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    ORACLE_INSERT_REWARD_LIMIT_URL = os.environ["ORACLE_INSERT_REWARD_LIMIT_URL"]
+
+    payload = {
+        "p_id": cardRewardLimit.ID,
+        "p_card": cardRewardLimit.CARD_ID,
+        "p_rewardslimit": cardRewardLimit.REWARDSLIMIT,
+        "p_rewardlimitused": cardRewardLimit.REWARDLIMITUSED,
+        "p_baserewardunlimited": cardRewardLimit.BASEREWARDUNLIMITED,
+        "p_tosync": cardRewardLimit.TOSYNC,
+        "p_deleteyn": cardRewardLimit.DELETEYN,
+        "p_updateddt": cardRewardLimit.UPDATEDDT
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    try:
+        response = requests.post(ORACLE_INSERT_REWARD_LIMIT_URL, headers=headers, json=payload)
         if response.status_code == 200:
             return {"status": "success"}
         else:
