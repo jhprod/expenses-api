@@ -63,7 +63,9 @@ class CardRewardLimit(BaseModel):
     TOSYNC: str 
     UPDATEDDT: str 
     DELETEYN: str
-   
+
+class QueryRewardLimit(BaseModel):
+    P1_CARDID: int
 
 def query_oracle(sql_query: str):
     headers = {
@@ -373,6 +375,36 @@ def update_card_reward_limit(
         logger.error(f"ORDS request failed: {e}")
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
 
+@app.post("/queryRewardLimit")
+def update_expense(
+    request: Request,
+    queryRewardLimit: QueryRewardLimit,
+    key: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    ORACLE_QUERY_REWARD_LIMIT_URL = os.environ["ORACLE_QUERY_REWARD_LIMIT_URL"]
+    payload = {
+        "P1_CARDID": queryRewardLimit.P1_CARDID       
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    try:
+        response = requests.post(f"{ORACLE_QUERY_REWARD_LIMIT_URL}", headers=headers, json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            return {"total_amount": data.get("total_amount")}
+        else:
+            print(f"ORDS response error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=response.text)
+    except requests.exceptions.RequestException as e:
+        print(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
         
 @app.get("/ping")
 def ping():
