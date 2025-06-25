@@ -150,6 +150,14 @@ def get_cardCycles(request: Request, key: str = Query(None)):
     SQL_QUERY = os.environ["card_cycles_query"]
     return query_oracle(SQL_QUERY)
 
+@app.get("/rewardLimitData")
+def get_expenses(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["reward_limit_query"]
+    return query_oracle(SQL_QUERY)
+
 ################# Get IDs ##############################
 
 @app.get("/get-expense-id")
