@@ -213,6 +213,27 @@ def get_recur_expense_id(request: Request, key: str = Query(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/get-total-rewards-month")
+def get_total_rewards_month(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    GET_REWARD_TOTAL_MONTH_URL = os.environ["GET_REWARD_TOTAL_MONTH_URL"]
+    try:
+        response = requests.get(GET_REWARD_TOTAL_MONTH_URL)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        data = response.json()
+
+        # return just the ID field
+        return {"Reward_total": data.get("reward_total")}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 ################# CRUD ##############################
 
 @app.post("/updateExpense")
