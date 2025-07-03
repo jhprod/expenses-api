@@ -98,7 +98,7 @@ def get_expenses(request: Request, key: str = Query(None), categoryid: str = Que
     if categoryid:
         filters.append(f"cardcategory = '{categoryid}'")
     if venueFound:
-        filters.append(f"venuefound = '{venuefound}'")
+        filters.append(f"venuefound = '{venueFound}'")
         
     if filters:
         sql_query = f"{base_query} WHERE " + " AND ".join(filters)
