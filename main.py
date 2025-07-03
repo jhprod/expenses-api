@@ -95,9 +95,9 @@ def get_expenses(request: Request, key: str = Query(None), categoryid: str = Que
     base_query = os.environ["transactions_query"]
     filters = []
 
-    if cardNo:
+    if categoryid:
         filters.append(f"cardcategory = '{categoryid}'")
-    if venue:
+    if venueFound:
         filters.append(f"venuefound = '{venuefound}'")
         
     if filters:
