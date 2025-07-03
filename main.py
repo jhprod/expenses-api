@@ -94,13 +94,23 @@ def get_expenses(request: Request, key: str = Query(None)):
     SQL_QUERY = os.environ["transactions_query"]
     return query_oracle(SQL_QUERY)
 
+from fastapi import Query
+
 @app.get("/cards")
-def get_cards(request: Request, key: str = Query(None)):
+def get_cards(
+    request: Request,
+    key: str = Query(None),
+    cardNo: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    SQL_QUERY = os.environ["cards_query"]
-    return query_oracle(SQL_QUERY)
+        raise HTTPException(status_code=403, detail="Forbidden") 
+    base_query = os.environ["cards_query"]
+    if cardNo:
+        sql_query = f"{base_query} WHERE CARDNO = '{cardNo}'"
+    else:
+        sql_query = base_query
+    return query_oracle(sql_query)
+
 
 @app.get("/categories")
 def get_categories(request: Request, key: str = Query(None)):
