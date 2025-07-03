@@ -127,9 +127,9 @@ def get_venue(
     filters = []
 
     if cardNo:
-        filters.append(f"CARDNO = '{cardNo}'")
+        filters.append(f"CardId = '{cardNo}'")
     if venue:
-        filters.append(f"VENUENAME = '{venue}'")
+        filters.append(f"VENUE = '{venue}'")
 
     if filters:
         sql_query = f"{base_query} WHERE " + " AND ".join(filters)
