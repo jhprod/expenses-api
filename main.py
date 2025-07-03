@@ -111,6 +111,34 @@ def get_cards(
         sql_query = base_query
     return query_oracle(sql_query)
 
+@app.get("/venueMapping")
+def get_venue(
+    request: Request,
+    key: str = Query(None),
+    cardNo: str = Query(None),
+    venue: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    base_query = os.environ["venue_mapping_query"]
+
+    filters = []
+
+    if cardNo:
+        filters.append(f"CARDNO = '{cardNo}'")
+    if venue:
+        filters.append(f"VENUENAME = '{venue}'")
+
+    if filters:
+        sql_query = f"{base_query} WHERE " + " AND ".join(filters)
+    else:
+        sql_query = base_query
+
+    return query_oracle(sql_query)
+
+
 
 @app.get("/categories")
 def get_categories(request: Request, key: str = Query(None)):
