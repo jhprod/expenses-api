@@ -149,12 +149,15 @@ def get_categories(request: Request, key: str = Query(None)):
     return query_oracle(SQL_QUERY)
 
 @app.get("/cardcategories")
-def get_cardcategories(request: Request, key: str = Query(None)):
+def get_cardcategories(request: Request, key: str = Query(None), categoryid = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
-    SQL_QUERY = os.environ["card_category_query"]
-    return query_oracle(SQL_QUERY)
+    if categoryid:
+        sql_query = f"{base_query} WHERE ID = '{categoryid}'"
+    else:
+        sql_query = base_query
+    return query_oracle(sql_query)
 
 @app.get("/recurExpenses")
 def get_recurExpenses(request: Request, key: str = Query(None)):
