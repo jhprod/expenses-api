@@ -96,7 +96,7 @@ def get_expenses(request: Request, key: str = Query(None), categoryid: str = Que
     filters = []
 
     if categoryid:
-        filters.append(f"cardcategory = '{categoryid}'")
+        filters.append("cardcategory is not null")
     if venueFound:
         filters.append(f"venuefound = '{venueFound}'")
         
