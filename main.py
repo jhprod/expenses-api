@@ -84,17 +84,28 @@ def query_oracle(sql_query: str):
         return data["items"][0]["resultSet"]["items"]
     except (KeyError, IndexError, TypeError):
         raise HTTPException(status_code=500, detail=data)
-
+        
+from fastapi import Query
 ################# Get rows ##############################
 @app.get("/expenses")
-def get_expenses(request: Request, key: str = Query(None)):
+def get_expenses(request: Request, key: str = Query(None), categoryid: str = Query(None), venueFound: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
-    SQL_QUERY = os.environ["transactions_query"]
-    return query_oracle(SQL_QUERY)
+    base_query = os.environ["transactions_query"]
+    filters = []
 
-from fastapi import Query
+    if cardNo:
+        filters.append(f"cardcategory = '{categoryid}'")
+    if venue:
+        filters.append(f"venuefound = '{venuefound}'")
+        
+    if filters:
+        sql_query = f"{base_query} WHERE " + " AND ".join(filters)
+    else:
+        sql_query = base_query
+
+    return query_oracle(sql_query)
 
 @app.get("/cards")
 def get_cards(
