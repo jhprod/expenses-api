@@ -153,6 +153,7 @@ def get_cardcategories(request: Request, key: str = Query(None), categoryid = Qu
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
+     base_query = os.environ["card_category_query"]
     if categoryid:
         sql_query = f"{base_query} WHERE ID = '{categoryid}'"
     else:
