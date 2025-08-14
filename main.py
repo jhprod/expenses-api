@@ -89,6 +89,8 @@ class InvestmentUnit(BaseModel):
     DELETEYN: str   
     UPDATEDDT: str 
     TOSYNC: str
+
+
     
 def query_oracle(sql_query: str):
     headers = {
@@ -703,7 +705,22 @@ def queryRewardByCard(
         print(f"ORDS request failed: {e}")
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
 
+@app.get("/tickerPrice")
+def get_price(symbol: str):
+    t = yf.Ticker(symbol)
+    info = t.fast_info or {}
+    price = info.get("last_price")
+    currency = info.get("currency") or t.info.get("currency")
 
+    if price is None:
+        hist = t.history(period="1d")
+        if not hist.empty:
+            price = float(hist["Close"].iloc[-1])
+
+    if price is None:
+        raise HTTPException(status_code=404, detail=f"No price for {symbol}")
+
+    return {"symbol": symbol, "price": price, "currency": currency or "USD"}
 
   
         
