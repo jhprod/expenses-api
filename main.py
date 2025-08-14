@@ -510,6 +510,48 @@ def queryRewardLimit(
         print(f"ORDS request failed: {e}")
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
 
+@app.post("/queryRewardByCard")
+def queryRewardByCard(
+    request: Request,
+    queryRewardByCard: QueryRewardByCard,
+    key: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    ORACLE_QUERY_REWARD_BY_CARD_URL = os.environ["ORACLE_QUERY_REWARD_BY_CARD_URL"]
+    payload = {
+        "P1_CARDID": QueryRewardByCard.P1_CARDID
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    try:
+        response = requests.post(
+            ORACLE_QUERY_REWARD_BY_CARD_URL,
+            headers=headers,
+            json=payload
+        )
+        if response.status_code == 200:
+            if not response.text.strip():
+                raise HTTPException(status_code=500, detail="ORDS returned 200 with empty body")
+            try:
+                data = response.json()
+            except ValueError:
+                raise HTTPException(status_code=500, detail="Invalid JSON returned from ORDS")
+
+            return {"total_miles": data.get("total_miles")}
+        else:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    except requests.exceptions.RequestException as e:
+        print(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
 
 
   
