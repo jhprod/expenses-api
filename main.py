@@ -284,6 +284,26 @@ def get_recur_expense_id(request: Request, key: str = Query(None)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/get-invest-veh-id")
+def get-invest-veh-id(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    ORDS_NEXT_ID_URL = os.environ["get-invest-veh-id-url"]
+    try:
+        response = requests.get(ORDS_NEXT_ID_URL)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        data = response.json()
+
+        # return just the ID field
+        return {"recur_expense_id": data.get("id")}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/get-total-rewards-month")
 def get_total_rewards_month(request: Request, key: str = Query(None)):
