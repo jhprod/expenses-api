@@ -285,7 +285,7 @@ def get_recur_expense_id(request: Request, key: str = Query(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get-invest-veh-id")
-def get-invest-veh-id(request: Request, key: str = Query(None)):
+def get_invest_veh_id(request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
