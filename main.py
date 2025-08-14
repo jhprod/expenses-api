@@ -706,7 +706,11 @@ def queryRewardByCard(
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
 
 @app.get("/tickerPrice")
-def get_price(symbol: str):
+def get_price(symbol: str, request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+        
     t = yf.Ticker(symbol)
     info = t.fast_info or {}
     price = info.get("last_price")
