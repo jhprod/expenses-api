@@ -544,16 +544,15 @@ def update_investment_unit(
     ORACLE_INSERT_INVESTMENT_UNIT_URL = os.environ["ORACLE_INSERT_INVESTMENT_UNIT_URL"]
     payload = {
         "p_id": investmentUnit.ID,
-        "p_veh_id": investmentUnit.DESCRIPTION,
-        "p_name": investmentUnit.AMOUNT,
-        "p_ticker": investmentUnit.START_DATE,
-        "p_holdingamt": investmentUnit.RECUR_DAY,
-        "p_avgboughtprice": investmentUnit.FREQUENCY,
-        "p_deleteyn": investmentUnit.LAST_GEN_DT,
-        "p_updateddt": investmentUnit.DELETEYN,
-        "p_tosync": investmentUnit.BUDGET_CATEGORY_ID
+        "p_veh_id": investmentUnit.VEH_ID,
+        "p_name": investmentUnit.NAME,
+        "p_ticker": investmentUnit.TICKER,
+        "p_holdingamt": investmentUnit.HOLDINGAMT,
+        "p_avgboughtprice": investmentUnit.AVGBOUGHTPRICE,
+        "p_deleteyn": investmentUnit.DELETEYN,
+        "p_updateddt": investmentUnit.UPDATEDDT,
+        "p_tosync": investmentUnit.TOSYNC
     }
-
     headers = {
         "Content-Type": "application/json",
         "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
