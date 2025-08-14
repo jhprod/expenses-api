@@ -68,6 +68,9 @@ class QueryRewardLimit(BaseModel):
     P1_CARDID: int
     P1_EXPENSEID: int
 
+class QueryRewardByCard(BaseModel):
+    P1_CARDID: int
+
 def query_oracle(sql_query: str):
     headers = {
         "Content-Type": "application/sql",
