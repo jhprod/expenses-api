@@ -299,7 +299,7 @@ def get-invest-veh-id(request: Request, key: str = Query(None)):
         data = response.json()
 
         # return just the ID field
-        return {"recur_expense_id": data.get("id")}
+        return {"invest_veh_id": data.get("id")}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
