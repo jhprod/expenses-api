@@ -229,6 +229,14 @@ def get_expenses(request: Request, key: str = Query(None)):
     SQL_QUERY = os.environ["reward_category_limit_usage_query"]
     return query_oracle(SQL_QUERY)
 
+@app.get("/investmentVehData")
+def get_expenses(request: Request, key: str = Query(None)):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    SQL_QUERY = os.environ["investment_veh_query"]
+    return query_oracle(SQL_QUERY)
+
 ################# Get IDs ##############################
 
 @app.get("/get-expense-id")
