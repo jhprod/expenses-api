@@ -71,6 +71,13 @@ class QueryRewardLimit(BaseModel):
 class QueryRewardByCard(BaseModel):
     P1_CARDID: int
 
+class InvestVehicle(BaseModel):
+    ID: int
+    NAME: str
+    UPDATEDDT: str 
+    DELETEYN: str
+    TOSYNC: str 
+    
 def query_oracle(sql_query: str):
     headers = {
         "Content-Type": "application/sql",
@@ -441,6 +448,41 @@ def update_recur_expense(
 
     try:
         response = requests.post(ORACLE_INSERT_RECUR_EXPENSE_URL, headers=headers, json=payload)
+        if response.status_code == 200:
+            return {"status": "success"}
+        else:
+            logger.error(f"ORDS error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=response.text)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
+@app.post("/updateInvestmentVehicle")
+def updateInvestmentVehicle(
+    request: Request,
+    investVehicle: InvestVehicle,
+    key: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    ORACLE_INSERT_INVEST_VEH_URL = os.environ["ORACLE_INSERT_INVEST_VEH_URL"]
+    payload = {
+        "p_id": investVehicle.ID,
+        "p_name": investVehicle.NAME,
+        "p_updateddate": investVehicle.UPDATEDDT,
+        "p_deleteyn": investVehicle.DELETEYN,
+        "p_tosync": investVehicle.TOSYNC
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    try:
+        response = requests.post(ORACLE_INSERT_INVEST_VEH_URL, headers=headers, json=payload)
         if response.status_code == 200:
             return {"status": "success"}
         else:
