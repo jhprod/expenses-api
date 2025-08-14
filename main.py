@@ -230,7 +230,7 @@ def get_expenses(request: Request, key: str = Query(None)):
     return query_oracle(SQL_QUERY)
 
 @app.get("/investmentVehData")
-def get_expenses(request: Request, key: str = Query(None)):
+def investment_veh_data(request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
