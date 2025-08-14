@@ -77,6 +77,17 @@ class InvestVehicle(BaseModel):
     UPDATEDDT: str 
     DELETEYN: str
     TOSYNC: str 
+
+class InvestmentUnit(BaseModel):
+    ID: int
+    VEH_ID: int
+    NAME: str
+    TICKER: str
+    HOLDINGAMT: float  
+    AVGBOUGHTPRICE: float  
+    DELETEYN: str   
+    UPDATEDDT: str 
+    TOSYNC: str
     
 def query_oracle(sql_query: str):
     headers = {
@@ -511,6 +522,45 @@ def updateInvestmentVehicle(
 
     try:
         response = requests.post(ORACLE_INSERT_INVEST_VEH_URL, headers=headers, json=payload)
+        if response.status_code == 200:
+            return {"status": "success"}
+        else:
+            logger.error(f"ORDS error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=response.text)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
+@app.post("/updateInvestmentUnit")
+def update_investment_unit(
+    request: Request,
+    investmentUnit: InvestmentUnit,
+    key: str = Query(None)
+):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    ORACLE_INSERT_INVESTMENT_UNIT_URL = os.environ["ORACLE_INSERT_INVESTMENT_UNIT_URL"]
+    payload = {
+        "p_id": investmentUnit.ID,
+        "p_veh_id": investmentUnit.DESCRIPTION,
+        "p_name": investmentUnit.AMOUNT,
+        "p_ticker": investmentUnit.START_DATE,
+        "p_holdingamt": investmentUnit.RECUR_DAY,
+        "p_avgboughtprice": investmentUnit.FREQUENCY,
+        "p_deleteyn": investmentUnit.LAST_GEN_DT,
+        "p_updateddt": investmentUnit.DELETEYN,
+        "p_tosync": investmentUnit.BUDGET_CATEGORY_ID
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+
+    try:
+        response = requests.post(ORACLE_INSERT_INVESTMENT_UNIT_URL, headers=headers, json=payload)
         if response.status_code == 200:
             return {"status": "success"}
         else:
