@@ -525,7 +525,7 @@ def queryRewardByCard(
 
     ORACLE_QUERY_REWARD_BY_CARD_URL = os.environ["ORACLE_QUERY_REWARD_BY_CARD_URL"]
     payload = {
-        "P1_CARDID": QueryRewardByCard.P1_CARDID
+        "P1_CARDID": queryRewardByCard.P1_CARDID
     }
 
     headers = {
