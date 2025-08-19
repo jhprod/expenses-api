@@ -173,31 +173,6 @@ def get_venue(
 
     return query_oracle(sql_query)
 
-@app.get("/expensesVenueFound")
-def get_expenses_venue_found(
-    request: Request,
-    key: str = Query(None),
-    venueFound: str = Query(None)
-):
-    client_key = request.headers.get("X-API-Key") or key
-    if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    base_query = os.environ["expensesVenueFound_query"]
-
-    filters = []
-
-    if venueFound:
-        filters.append(f"venuefound = '{venueFound}'" + " and cardcategory is not null")
-
-    if filters:
-        sql_query = f"{base_query} WHERE " + " AND ".join(filters)
-    else:
-        sql_query = base_query
-
-    return query_oracle(sql_query)
-
-
 
 @app.get("/categories")
 def get_categories(request: Request, key: str = Query(None)):
