@@ -187,7 +187,7 @@ def get_expenses_venue_found(
 
     filters = []
 
-    if cardNo:
+    if venueFound:
         filters.append(f"venuefound = '{venueFound}'" + " and cardcategory is not null")
 
     if filters:
