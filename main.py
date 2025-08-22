@@ -3,7 +3,9 @@ import base64
 import requests
 from fastapi import FastAPI, Request, HTTPException, Query
 from pydantic import BaseModel
+from datetime import time, datetime, timedelta
 import yfinance as yf
+import pytz
 import logging
 
 # Add this line to define the logger
@@ -704,28 +706,115 @@ def queryRewardByCard(
         print(f"ORDS request failed: {e}")
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
 
+# @app.get("/tickerPrice")
+# def get_price(symbol: str, request: Request, key: str = Query(None)):
+#     client_key = request.headers.get("X-API-Key") or key
+#     if client_key != API_KEY:
+#         raise HTTPException(status_code=403, detail="Forbidden")
+        
+#     t = yf.Ticker(symbol)
+#     info = t.fast_info or {}
+#     price = info.get("last_price")
+#     currency = info.get("currency") or t.info.get("currency")
+
+#     if price is None:
+#         hist = t.history(period="1d")
+#         if not hist.empty:
+#             price = float(hist["Close"].iloc[-1])
+
+#     if price is None:
+#         raise HTTPException(status_code=404, detail=f"No price for {symbol}")
+
+#     return {"symbol": symbol, "price": price, "currency": currency or "USD"}
+
+def session_hours_for_exchange(exchange: str | None):
+    """
+    Return (tz_name, regular_open, regular_close) for common exchanges.
+    Times are local to tz_name.
+    """
+    ex = (exchange or "").upper()
+    # US (NYSE/Nasdaq)
+    if "NASDAQ" in ex or "NMS" in ex or "NYSE" in ex or ex in ("NYQ", "NCM", "NMS", "NMQ"):
+        return ("America/New_York", time(9, 30), time(16, 0))
+    # London Stock Exchange
+    if "LSE" in ex or ex == "L" or "LONDON" in ex:
+        return ("Europe/London", time(8, 0), time(16, 30))
+    # Default to US
+    return ("America/New_York", time(9, 30), time(16, 0))
+
+def label_session(ts_local: datetime, open_t: time, close_t: time):
+    if ts_local.time() < open_t:
+        return "pre"
+    if open_t <= ts_local.time() <= close_t:
+        return "regular"
+    return "post"
+
 @app.get("/tickerPrice")
 def get_price(symbol: str, request: Request, key: str = Query(None)):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden")
-        
+
     t = yf.Ticker(symbol)
     info = t.fast_info or {}
-    price = info.get("last_price")
-    currency = info.get("currency") or t.info.get("currency")
+    meta = t.info or {}
+
+    # Figure out exchange + timezone + regular hours
+    tz_name_info = meta.get("exchangeTimezoneName") or info.get("timezone") or "America/New_York"
+    exchange = meta.get("exchange") or ""
+    tz_name_map, reg_open, reg_close = session_hours_for_exchange(exchange)
+    # Prefer Yahoo’s tz if present; fall back to our mapping tz
+    tz_name = tz_name_info or tz_name_map
+    try:
+        tz = pytz.timezone(tz_name)
+    except Exception:
+        tz = pytz.timezone(tz_name_map)
+
+    now_local = datetime.now(tz)
+
+    # Pull 1m history with pre/post included — 2 days to cover early premarket/post that cross midnight
+    hist = t.history(period="2d", interval="1m", prepost=True)
+
+    price = None
+    session = None
+
+    if not hist.empty:
+        # Use the last bar up to "now" (local to exchange)
+        # Index is tz-aware; convert to exchange tz and filter
+        hist_local = hist.tz_convert(tz)
+
+        # Keep only rows <= now
+        recent = hist_local[hist_local.index <= now_local]
+        if not recent.empty:
+            last_ts = recent.index[-1]
+            close_px = float(recent["Close"].iloc[-1])
+            price = close_px
+            session = label_session(last_ts, reg_open, reg_close)
+
+    # If no intraday candle found (weekend/holiday or symbol restrictions), fall back
+    if price is None:
+        price = info.get("last_price")
 
     if price is None:
-        hist = t.history(period="1d")
-        if not hist.empty:
-            price = float(hist["Close"].iloc[-1])
+        # Final fallback: last daily close
+        daily = t.history(period="5d")  # a few days to avoid holidays
+        if not daily.empty:
+            price = float(daily["Close"].iloc[-1])
 
     if price is None:
         raise HTTPException(status_code=404, detail=f"No price for {symbol}")
 
-    return {"symbol": symbol, "price": price, "currency": currency or "USD"}
+    currency = info.get("currency") or meta.get("currency") or "USD"
 
-  
+    return {
+        "symbol": symbol,
+        "price": price,
+        "currency": currency,
+        "session": session or "unknown",  # pre | regular | post | unknown
+        "exchange": exchange or "unknown",
+        "exchangeTz": str(tz),
+        "asOf": datetime.utcnow().isoformat() + "Z",
+    }  
         
 @app.get("/ping")
 def ping():
