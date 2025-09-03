@@ -1,7 +1,8 @@
 import os
 import base64
 import requests
-from fastapi import FastAPI, Request, HTTPException, Query
+from typing import List, Optional, Dict, Any
+from fastapi import FastAPI, Request, HTTPException, Query, Body
 from pydantic import BaseModel
 from datetime import time, datetime, timedelta
 import yfinance as yf
@@ -92,7 +93,9 @@ class InvestmentUnit(BaseModel):
     UPDATEDDT: str 
     TOSYNC: str
 
-
+class PricesRequest(BaseModel):
+    symbols: List[str]
+    key: Optional[str] = None 
     
 def query_oracle(sql_query: str):
     headers = {
@@ -749,12 +752,78 @@ def label_session(ts_local: datetime, open_t: time, close_t: time):
         return "regular"
     return "post"
 
-@app.get("/tickerPrice")
-def get_price(symbol: str, request: Request, key: str = Query(None)):
-    client_key = request.headers.get("X-API-Key") or key
-    if client_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
+# @app.get("/tickerPrice")
+# def get_price(symbol: str, request: Request, key: str = Query(None)):
+#     client_key = request.headers.get("X-API-Key") or key
+#     if client_key != API_KEY:
+#         raise HTTPException(status_code=403, detail="Forbidden")
 
+#     t = yf.Ticker(symbol)
+#     info = t.fast_info or {}
+#     meta = t.info or {}
+
+#     # Figure out exchange + timezone + regular hours
+#     tz_name_info = meta.get("exchangeTimezoneName") or info.get("timezone") or "America/New_York"
+#     exchange = meta.get("exchange") or ""
+#     tz_name_map, reg_open, reg_close = session_hours_for_exchange(exchange)
+#     # Prefer Yahoo’s tz if present; fall back to our mapping tz
+#     tz_name = tz_name_info or tz_name_map
+#     try:
+#         tz = pytz.timezone(tz_name)
+#     except Exception:
+#         tz = pytz.timezone(tz_name_map)
+
+#     now_local = datetime.now(tz)
+
+#     # Pull 1m history with pre/post included — 2 days to cover early premarket/post that cross midnight
+#     hist = t.history(period="2d", interval="1m", prepost=True)
+
+#     price = None
+#     session = None
+
+#     if not hist.empty:
+#         # Use the last bar up to "now" (local to exchange)
+#         # Index is tz-aware; convert to exchange tz and filter
+#         hist_local = hist.tz_convert(tz)
+
+#         # Keep only rows <= now
+#         recent = hist_local[hist_local.index <= now_local]
+#         if not recent.empty:
+#             last_ts = recent.index[-1]
+#             close_px = float(recent["Close"].iloc[-1])
+#             price = close_px
+#             session = label_session(last_ts, reg_open, reg_close)
+
+#     # If no intraday candle found (weekend/holiday or symbol restrictions), fall back
+#     if price is None:
+#         price = info.get("last_price")
+
+#     if price is None:
+#         # Final fallback: last daily close
+#         daily = t.history(period="5d")  # a few days to avoid holidays
+#         if not daily.empty:
+#             price = float(daily["Close"].iloc[-1])
+
+#     if price is None:
+#         raise HTTPException(status_code=404, detail=f"No price for {symbol}")
+
+#     currency = info.get("currency") or meta.get("currency") or "USD"
+
+#     return {
+#         "symbol": symbol,
+#         "price": price,
+#         "currency": currency,
+#         "session": session or "unknown",  # pre | regular | post | unknown
+#         "exchange": exchange or "unknown",
+#         "exchangeTz": str(tz),
+#         "asOf": datetime.utcnow().isoformat() + "Z",
+#     }  
+
+def fetch_one_symbol(symbol: str) -> Dict[str, Any]:
+    """
+    EXACT logic from your original /tickerPrice endpoint, factored into a helper.
+    Raises HTTPException(404) if no price is found, same as before.
+    """
     t = yf.Ticker(symbol)
     info = t.fast_info or {}
     meta = t.info or {}
@@ -779,11 +848,8 @@ def get_price(symbol: str, request: Request, key: str = Query(None)):
     session = None
 
     if not hist.empty:
-        # Use the last bar up to "now" (local to exchange)
-        # Index is tz-aware; convert to exchange tz and filter
+        # Index is tz-aware; convert to exchange tz and filter rows <= now
         hist_local = hist.tz_convert(tz)
-
-        # Keep only rows <= now
         recent = hist_local[hist_local.index <= now_local]
         if not recent.empty:
             last_ts = recent.index[-1]
@@ -791,13 +857,12 @@ def get_price(symbol: str, request: Request, key: str = Query(None)):
             price = close_px
             session = label_session(last_ts, reg_open, reg_close)
 
-    # If no intraday candle found (weekend/holiday or symbol restrictions), fall back
+    # Fallbacks
     if price is None:
         price = info.get("last_price")
 
     if price is None:
-        # Final fallback: last daily close
-        daily = t.history(period="5d")  # a few days to avoid holidays
+        daily = t.history(period="5d")
         if not daily.empty:
             price = float(daily["Close"].iloc[-1])
 
@@ -814,7 +879,39 @@ def get_price(symbol: str, request: Request, key: str = Query(None)):
         "exchange": exchange or "unknown",
         "exchangeTz": str(tz),
         "asOf": datetime.utcnow().isoformat() + "Z",
-    }  
+    }
+
+def auth_ok(request: Request, key_from_query: Optional[str], key_from_body: Optional[str] = None) -> bool:
+    client_key = request.headers.get("X-API-Key") or key_from_body or key_from_query
+    return client_key == API_KEY
+
+@app.post("/tickerPrices")
+def post_prices(
+    request: Request,
+    body: PricesRequest = Body(...),
+    key: str = Query(None)
+):
+    """
+    Batch POST with JSON body: { "symbols": ["TSLA","AAPL","PLTR"] }
+    Optional API key can also be in body.key if you prefer.
+    """
+    if not auth_ok(request, key_from_query=key, key_from_body=body.key):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    merged = [s.upper() for s in (body.symbols or []) if s and s.strip()]
+    if not merged:
+        raise HTTPException(status_code=400, detail="Body.symbols must contain at least one ticker")
+
+    results = []
+    for sym in merged:
+        try:
+            results.append(fetch_one_symbol(sym))
+        except HTTPException as e:
+            results.append({"symbol": sym, "error": {"status": e.status_code, "detail": e.detail}})
+        except Exception as e:
+            results.append({"symbol": sym, "error": {"status": 500, "detail": str(e)}})
+
+    return {"count": len(results), "results": results}
         
 @app.get("/ping")
 def ping():
