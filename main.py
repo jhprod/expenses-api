@@ -158,14 +158,13 @@ def send_apns_push(title: str, subtitle: str, data: Optional[Dict[str, Any]] = N
         "aps": {"alert": {"title": title, "subtitle": subtitle}, "sound": "default"},
         **(data or {}),
     }
-    headers = {
-        "authorization": f"bearer {_apns_auth_token()}",
-        "apns-topic": APNS_BUNDLE_ID,
-        "apns-push-type": "alert",
-        "apns-priority": "10",
-    }
-
     try:
+        headers = {
+            "authorization": f"bearer {_apns_auth_token()}",
+            "apns-topic": APNS_BUNDLE_ID,
+            "apns-push-type": "alert",
+            "apns-priority": "10",
+        }
         with httpx.Client(http2=True, timeout=10) as client:
             for token in DEVICE_TOKENS:
                 r = client.post(f"{APNS_HOST}/3/device/{token}", headers=headers, json=payload)
