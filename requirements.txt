@@ -6,3 +6,5 @@ pytz
 numpy
 pandas
 pydantic
+httpx[http2]
+PyJWT[cryptography]
