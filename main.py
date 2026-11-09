@@ -1,8 +1,11 @@
 import os
+import time as time_module
 import base64
 import requests
+import httpx
+import jwt  # PyJWT
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, Request, HTTPException, Query, Body
+from fastapi import FastAPI, Request, HTTPException, Query, Body, BackgroundTasks
 from pydantic import BaseModel
 from datetime import time, datetime, timedelta
 import yfinance as yf
@@ -114,6 +117,83 @@ def query_oracle(sql_query: str):
     except (KeyError, IndexError, TypeError):
         raise HTTPException(status_code=500, detail=data)
         
+################# APNs push ##############################
+APNS_TEAM_ID = os.environ.get("APPLE_TEAM_ID", "")
+APNS_KEY_ID = os.environ.get("APNS_KEY_ID", "")
+APNS_KEY = os.environ.get("APNS_KEY", "").replace("\\n", "\n")   # .p8 contents
+APNS_BUNDLE_ID = os.environ.get("BUNDLE_ID", "")
+APNS_HOST = (
+    "https://api.sandbox.push.apple.com"
+    if os.environ.get("APNS_SANDBOX") == "1"
+    else "https://api.push.apple.com"
+)
+# Comma-separated device tokens (just one for now: your iPhone)
+DEVICE_TOKENS = [t.strip() for t in os.environ.get("DEVICE_TOKENS", "").split(",") if t.strip()]
+
+_apns_jwt = {"token": None, "issued": 0}
+
+
+def _apns_auth_token() -> str:
+    """APNs JWT: reuse it (Apple rejects refreshing more than every 20 min),
+    but renew before it expires at 60 min."""
+    now = int(time_module.time())
+    if not _apns_jwt["token"] or now - _apns_jwt["issued"] > 45 * 60:
+        _apns_jwt["token"] = jwt.encode(
+            {"iss": APNS_TEAM_ID, "iat": now},
+            APNS_KEY,
+            algorithm="ES256",
+            headers={"kid": APNS_KEY_ID},
+        )
+        _apns_jwt["issued"] = now
+    return _apns_jwt["token"]
+
+
+def send_apns_push(title: str, subtitle: str, data: Optional[Dict[str, Any]] = None):
+    """Send an alert push to every token in DEVICE_TOKENS. Never raises."""
+    if not (APNS_TEAM_ID and APNS_KEY_ID and APNS_KEY and APNS_BUNDLE_ID and DEVICE_TOKENS):
+        logger.warning("APNs not configured (missing env vars); skipping push")
+        return
+
+    payload = {
+        "aps": {"alert": {"title": title, "subtitle": subtitle}, "sound": "default"},
+        **(data or {}),
+    }
+    headers = {
+        "authorization": f"bearer {_apns_auth_token()}",
+        "apns-topic": APNS_BUNDLE_ID,
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+    }
+
+    try:
+        with httpx.Client(http2=True, timeout=10) as client:
+            for token in DEVICE_TOKENS:
+                r = client.post(f"{APNS_HOST}/3/device/{token}", headers=headers, json=payload)
+                if r.status_code != 200:
+                    # r.text holds Apple's reason, e.g. BadDeviceToken, DeviceTokenNotForTopic
+                    logger.error(f"APNs {r.status_code} for token {token[:8]}...: {r.text}")
+    except Exception as e:
+        logger.error(f"APNs push failed: {e}")
+
+
+def notify_new_expense(expense: "Expense"):
+    send_apns_push(
+        title="You have a new expense",
+        subtitle=f"You have an expense of ${expense.AMOUNT:.2f} at {expense.DESCRIPTION}",
+        data={"screen": "expenses", "expenseId": expense.ID},
+    )
+
+
+@app.post("/test-push")
+def test_push(request: Request, key: str = Query(None)):
+    """Temporary: confirms APNs config works. Remove once push is verified."""
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    send_apns_push("You have a new expense", "You have an expense of $1.23 at Test Cafe")
+    return {"status": "sent (check Render logs for any APNs error)"}
+
+
 from fastapi import Query
 ################# Get rows ##############################
 @app.get("/expenses")
@@ -393,7 +473,9 @@ def get_total_rewards_month(request: Request, key: str = Query(None)):
 def update_expense(
     request: Request,
     expense: Expense,
-    key: str = Query(None)
+    background_tasks: BackgroundTasks,
+    key: str = Query(None),
+    notify: bool = Query(False)   # Apps Script passes notify=true; the iOS app doesn't
 ):
     client_key = request.headers.get("X-API-Key") or key
     if client_key != API_KEY:
@@ -424,6 +506,9 @@ def update_expense(
     try:
         response = requests.post(f"{ORACLE_INSERT_EXPENSE_URL}", headers=headers, json=payload)
         if response.status_code == 200:
+            if notify and expense.DELETEYN != "Y":
+                # runs after the response is sent, so a push problem never affects the insert
+                background_tasks.add_task(notify_new_expense, expense)
             return {"status": "success"}
         else:
             print(f"ORDS response error: {response.status_code} - {response.text}")
