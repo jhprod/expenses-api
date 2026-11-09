@@ -155,7 +155,7 @@ def send_apns_push(title: str, subtitle: str, data: Optional[Dict[str, Any]] = N
         return
 
     payload = {
-        "aps": {"alert": {"title": title, "subtitle": subtitle}, "sound": "default"},
+        "aps": {"alert": {"title": title, "body": subtitle}, "sound": "default"},
         **(data or {}),
     }
     try:
