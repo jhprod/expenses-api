@@ -155,7 +155,7 @@ def send_apns_push(title: str, subtitle: str, data: Optional[Dict[str, Any]] = N
         return
 
     payload = {
-        "aps": {"alert": {"title": title, "body": subtitle}, "sound": "default"},
+        "aps": {"alert": {"title": title, "subtitle": subtitle}, "sound": "default"},
         **(data or {}),
     }
     try:
@@ -176,6 +176,15 @@ def send_apns_push(title: str, subtitle: str, data: Optional[Dict[str, Any]] = N
 
 
 def notify_new_expense(expense: "Expense"):
+    # PayNow returns are money coming in, so they get their own wording
+    if (expense.DESCRIPTION or "").strip().lower() == "paynow returns":
+        send_apns_push(
+            title="You have received a Paynow payment",
+            subtitle=f"You have received a paynow payment of ${abs(expense.AMOUNT):.2f}",
+            data={"screen": "expenses", "expenseId": expense.ID},
+        )
+        return
+
     send_apns_push(
         title="You have a new expense",
         subtitle=f"You have an expense of ${expense.AMOUNT:.2f} at {expense.DESCRIPTION}",
