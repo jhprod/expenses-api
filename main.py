@@ -65,11 +65,57 @@ class CardRewardLimit(BaseModel):
     ID: int
     CARDID: int
     REWARDSLIMIT: int
-    REWARDLIMITUSED: int
+    REWARDLIMITUSED: int = 0  # ignored by UPSERT_CARD_REWARD_LIMIT
     BASEREWARDUNLIMITED: str
     TOSYNC: str 
     UPDATEDDT: str 
     DELETEYN: str
+
+class CreditCard(BaseModel):
+    ID: int
+    CARDPICTURE: str = ""
+    ISSUERBANK: str = ""
+    CARDNAME: str
+    CARDNO: str = ""
+    REWARDTYPE: str = ""
+    REWARDBLOCK: str = ""
+    REWARDCALCULATION: str = ""
+    CARDTYPE: str = ""
+    REWARDCALCULATIONCLASS: str = ""
+    CREDITLIMITID: Optional[int] = None  # only used when the card is new
+    TOSYNC: str
+    DELETEYN: str
+    UPDATEDDT: str
+
+class CardCycle(BaseModel):
+    ID: int
+    CARDID: int
+    BILLCYCLE: str
+    BILLCYCLEDAY: int
+    REWARDCYCLE: str
+    REWARDCYCLEDAY: int
+    TOSYNC: str
+    DELETEYN: str
+    UPDATEDDT: str
+
+class CardRewardCategory(BaseModel):
+    ID: int
+    CARDID: int
+    REWARDCATEGORY: str
+    BASEREWARDRATE: float
+    BONUSREWARDRATE: float
+    TOSYNC: str
+    DELETEYN: str
+    UPDATEDDT: str
+
+class RewardCategoryLimit(BaseModel):
+    ID: int
+    CARDCATEGORYID: int
+    REWARDSLIMIT: int
+    BASEREWARDUNLIMITED: str
+    TOSYNC: str
+    DELETEYN: str
+    UPDATEDDT: str
 
 class QueryRewardLimit(BaseModel):
     P1_CARDID: int
@@ -715,6 +761,98 @@ def update_card_reward_limit(
     except requests.exceptions.RequestException as e:
         logger.error(f"ORDS request failed: {e}")
         raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+
+
+def _post_to_ords(env_var: str, payload: Dict[str, Any]):
+    """POST a procedure payload to an ORDS URL taken from env_var."""
+    url = os.environ[env_var]
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+    if response.status_code == 200:
+        return {"status": "success"}
+    logger.error(f"ORDS error: {response.status_code} - {response.text}")
+    raise HTTPException(status_code=500, detail=response.text)
+
+
+def _check_key(request: Request, key: Optional[str]):
+    client_key = request.headers.get("X-API-Key") or key
+    if client_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.post("/updateCard")
+def update_card(request: Request, card: CreditCard, key: str = Query(None)):
+    _check_key(request, key)
+    return _post_to_ords("ORACLE_UPSERT_CARD_URL", {
+        "p_id": card.ID,
+        "p_cardpicture": card.CARDPICTURE,
+        "p_issuerbank": card.ISSUERBANK,
+        "p_cardname": card.CARDNAME,
+        "p_cardno": card.CARDNO,
+        "p_rewardtype": card.REWARDTYPE,
+        "p_rewardblock": card.REWARDBLOCK,
+        "p_rewardcalculation": card.REWARDCALCULATION,
+        "p_cardtype": card.CARDTYPE,
+        "p_rewardcalculationclass": card.REWARDCALCULATIONCLASS,
+        "p_creditlimitid": card.CREDITLIMITID,
+        "p_tosync": card.TOSYNC,
+        "p_deleteyn": card.DELETEYN,
+        "p_updateddt": card.UPDATEDDT
+    })
+
+
+@app.post("/updateCardCycle")
+def update_card_cycle(request: Request, cycle: CardCycle, key: str = Query(None)):
+    _check_key(request, key)
+    # Cycle start dates are set by UPDATE_CARD_REWARD_LIMIT_PROC, so they are not sent
+    return _post_to_ords("ORACLE_UPSERT_CARD_CYCLE_URL", {
+        "p_id": cycle.ID,
+        "p_cardid": cycle.CARDID,
+        "p_billcycle": cycle.BILLCYCLE,
+        "p_billcycleday": cycle.BILLCYCLEDAY,
+        "p_rewardcycle": cycle.REWARDCYCLE,
+        "p_rewardcycleday": cycle.REWARDCYCLEDAY,
+        "p_tosync": cycle.TOSYNC,
+        "p_deleteyn": cycle.DELETEYN,
+        "p_updateddt": cycle.UPDATEDDT
+    })
+
+
+@app.post("/updateCardCategory")
+def update_card_category(request: Request, category: CardRewardCategory, key: str = Query(None)):
+    _check_key(request, key)
+    return _post_to_ords("ORACLE_UPSERT_CARD_CATEGORY_URL", {
+        "p_id": category.ID,
+        "p_cardid": category.CARDID,
+        "p_rewardcategory": category.REWARDCATEGORY,
+        "p_baserewardrate": category.BASEREWARDRATE,
+        "p_bonusrewardrate": category.BONUSREWARDRATE,
+        "p_tosync": category.TOSYNC,
+        "p_deleteyn": category.DELETEYN,
+        "p_updateddt": category.UPDATEDDT
+    })
+
+
+@app.post("/updateRewardCategoryLimit")
+def update_reward_category_limit(request: Request, limit: RewardCategoryLimit, key: str = Query(None)):
+    _check_key(request, key)
+    # REWARDLIMITUSED is calculated live from expenses, so it is not sent
+    return _post_to_ords("ORACLE_UPSERT_REWARD_CAT_LIMIT_URL", {
+        "p_id": limit.ID,
+        "p_cardcategoryid": limit.CARDCATEGORYID,
+        "p_rewardslimit": limit.REWARDSLIMIT,
+        "p_baserewardunlimited": limit.BASEREWARDUNLIMITED,
+        "p_tosync": limit.TOSYNC,
+        "p_deleteyn": limit.DELETEYN,
+        "p_updateddt": limit.UPDATEDDT
+    })
 
 
 @app.post("/queryRewardLimit")
