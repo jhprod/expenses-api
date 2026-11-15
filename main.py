@@ -855,6 +855,43 @@ def update_reward_category_limit(request: Request, limit: RewardCategoryLimit, k
     })
 
 
+def _new_ids_from_ords(env_var: str, keys: List[str]) -> Dict[str, int]:
+    """Call an ID-generator procedure (AutoREST, OUT params) and return the IDs."""
+    url = os.environ[env_var]
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + base64.b64encode(f"{USERNAME}:{PASSWORD}".encode()).decode()
+    }
+    try:
+        response = requests.post(url, headers=headers, json={})
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ORDS request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"ORDS communication failed: {e}")
+    if response.status_code != 200:
+        logger.error(f"ORDS error: {response.status_code} - {response.text}")
+        raise HTTPException(status_code=500, detail=response.text)
+    data = {k.lower(): v for k, v in response.json().items()}
+    try:
+        return {k: int(data[f"p_{k}"]) for k in keys}
+    except (KeyError, TypeError, ValueError):
+        logger.error(f"Unexpected ID response: {data}")
+        raise HTTPException(status_code=500, detail=f"Unexpected ID response: {data}")
+
+
+@app.post("/get-new-card-ids")
+def get_new_card_ids(request: Request, key: str = Query(None)):
+    """IDs for a new card, its cycle and its card reward limit."""
+    _check_key(request, key)
+    return _new_ids_from_ords("ORACLE_NEW_CARD_IDS_URL", ["card_id", "cycle_id", "limit_id"])
+
+
+@app.post("/get-new-card-category-ids")
+def get_new_card_category_ids(request: Request, key: str = Query(None)):
+    """IDs for one new reward category and its category limit."""
+    _check_key(request, key)
+    return _new_ids_from_ords("ORACLE_NEW_CARD_CATEGORY_IDS_URL", ["category_id", "cat_limit_id"])
+
+
 @app.post("/queryRewardLimit")
 def queryRewardLimit(
     request: Request,
